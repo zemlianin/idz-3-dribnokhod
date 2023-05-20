@@ -4,10 +4,17 @@
 #include <stdlib.h>     /* for atoi() and exit() */
 #include <string.h>     /* for memset() */
 #include <unistd.h>     /* for close() */
+#include <stdbool.h>
+
+float EPS = 0.01;
+float fun_param_1;
+float fun_param_2;
+float fun_param_3;
 
 #define RCVBUFSIZE 32 /* Size of receive buffer */
 
-double f(double x)
+double
+f(double x)
 {
     return abs(fun_param_1 * x * x * x + fun_param_2 * x * x + fun_param_3 * x);
 }
@@ -70,34 +77,29 @@ int main(int argc, char *argv[])
     echoServAddr.sin_port = htons(echoServPort);      /* Server port */
 
     /* Establish the connection to the echo server */
+    int SIZE_F = 80;
+    char lb[SIZE_F];
+    char rb[SIZE_F];
+
     if (connect(sock, (struct sockaddr *)&echoServAddr, sizeof(echoServAddr)) < 0)
         DieWithError("connect() failed");
-
-    echoStringLen = strlen(echoString); /* Determine input length */
-
-    for (int i = 0; i < 10; ++i)
+    while (true)
     {
-        /* Send the string to the server */
-        if (send(sock, echoString, echoStringLen, 0) != echoStringLen)
-            DieWithError("send() sent a different number of bytes than expected");
+        if ((bytesRcvd = recv(sock, lb, SIZE_F, 0)) <= 0)
+            DieWithError("recv() failed or connection closed prematurely");
 
-        /* Receive the same string back from the server */
-        totalBytesRcvd = 0;
-        printf("%d) Received: ", i); // Setup to print the echoed string
-        while (totalBytesRcvd < echoStringLen)
-        {
-            /* Receive up to the buffer size (minus 1 to leave space for
-            a null terminator) bytes from the sender */
-            if ((bytesRcvd = recv(sock, echoBuffer, RCVBUFSIZE - 1, 0)) <= 0)
-                DieWithError("recv() failed or connection closed prematurely");
-            totalBytesRcvd += bytesRcvd;  /* Keep tally of total bytes */
-            echoBuffer[bytesRcvd] = '\0'; /* Terminate the string! */
-            printf("%s", echoBuffer);     /* Print the echo buffer */
-        }
-
-        printf("\n"); /* Print a final linefeed */
-        sleep(2);
+        if ((bytesRcvd = recv(sock, rb, SIZE_F, 0)) <= 0)
+            DieWithError("recv() failed or connection closed prematurely");
+        float l = atof(lb);
+        float r = atof(rb);
+        // printf("%f", l);
+        // printf("%f", r);
+        double area = q_integral(l, r, f(l), f(r), (f(l) + f(r)) * (r - l) / 2);
+        printf("%f\t%f\t : %f\n", l, r, area);
+        // send(sock, echoString, echoStringLen, 0);
     }
+    printf("\n"); /* Print a final linefeed */
+    sleep(2);
 
     close(sock);
     exit(0);
