@@ -7,27 +7,26 @@
 #include <stdbool.h>
 
 float EPS = 0.01;
-float fun_param_1;
-float fun_param_2;
-float fun_param_3;
+float fun_param_1 = 1;
+float fun_param_2 = 2;
+float fun_param_3 = 3;
 
 #define RCVBUFSIZE 32 /* Size of receive buffer */
 
-double
-f(double x)
+float f(float x)
 {
     return abs(fun_param_1 * x * x * x + fun_param_2 * x * x + fun_param_3 * x);
 }
 
-double q_integral(double left, double right, double f_left, double f_right, double intgrl_now)
+float q_integral(float left, float right, float f_left, float f_right, float intgrl_now)
 {
 
-    double mid = (left + right) / 2;
-    double f_mid = f(mid); // Аппроксимация по левому отрезку
+    float mid = (left + right) / 2;
+    float f_mid = f(mid); // Аппроксимация по левому отрезку
 
-    double l_integral = (f_left + f_mid) * (mid - left) / 2; // Аппроксимация по правому отрезку
+    float l_integral = (f_left + f_mid) * (mid - left) / 2; // Аппроксимация по правому отрезку
 
-    double r_integral = (f_mid + f_right) * (right - mid) / 2;
+    float r_integral = (f_mid + f_right) * (right - mid) / 2;
     if (abs((l_integral + r_integral) - intgrl_now) > EPS)
     { // Рекурсия для интегрирования обоих значений
         l_integral = q_integral(left, mid, f_left, f_mid, l_integral);
@@ -77,26 +76,34 @@ int main(int argc, char *argv[])
     echoServAddr.sin_port = htons(echoServPort);      /* Server port */
 
     /* Establish the connection to the echo server */
-    int SIZE_F = 80;
+    int SIZE_F = sizeof(float);
     char lb[SIZE_F];
     char rb[SIZE_F];
+    char ansb[SIZE_F];
 
     if (connect(sock, (struct sockaddr *)&echoServAddr, sizeof(echoServAddr)) < 0)
         DieWithError("connect() failed");
     while (true)
     {
-        if ((bytesRcvd = recv(sock, lb, SIZE_F, 0)) <= 0)
-            DieWithError("recv() failed or connection closed prematurely");
-
-        if ((bytesRcvd = recv(sock, rb, SIZE_F, 0)) <= 0)
-            DieWithError("recv() failed or connection closed prematurely");
+        bytesRcvd = read(sock, lb, SIZE_F);
+        bytesRcvd = read(sock, rb, SIZE_F);
+        // if ((bytesRcvd = recv(sock, rb, SIZE_F, 0)) <= 0)
+        //     DieWithError("recv() failed or connection closed prematurely");
         float l = atof(lb);
         float r = atof(rb);
         // printf("%f", l);
         // printf("%f", r);
-        double area = q_integral(l, r, f(l), f(r), (f(l) + f(r)) * (r - l) / 2);
+        sleep(3); // чтобы все не моментально происходило
+        float area = q_integral(l, r, f(l), f(r), (f(l) + f(r)) * (r - l) / 2);
         printf("%f\t%f\t : %f\n", l, r, area);
-        // send(sock, echoString, echoStringLen, 0);
+        // sleep(1);
+        // printf("%f-%f\n", l, r);
+        if (l < 0 || r < 0)
+        {
+            break;
+        }
+        sprintf(ansb, "%f", area);
+        send(sock, ansb, SIZE_F, 0);
     }
     printf("\n"); /* Print a final linefeed */
     sleep(2);
