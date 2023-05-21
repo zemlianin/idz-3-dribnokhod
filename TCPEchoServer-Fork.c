@@ -22,7 +22,10 @@ int main(int argc, char *argv[])
 {
     int servSock;
     int clntSock;
+    int servSock2;
+    int clntSock2;
     unsigned short echoServPort;
+    unsigned short observerPort;
     pid_t processID;
     unsigned int childProcCount = 0;
     const char *sem_name = "sem100";
@@ -62,16 +65,25 @@ int main(int argc, char *argv[])
         exit(-1);
     };
 
-    if (argc != 2)
+    if (argc != 3)
     {
-        fprintf(stderr, "Usage:  %s <Server Port>\n", argv[0]);
+        fprintf(stderr, "Usage:  %s <Server Port> <Observer Port>\n", argv[0]);
         exit(1);
     }
 
     echoServPort = atoi(argv[1]);
+    observerPort = atoi(argv[2]);
     servSock = CreateTCPServerSocket(echoServPort);
+    servSock2 = CreateTCPServerSocket(observerPort);
     int cur = 0;
     int SIZE_F = sizeof(float);
+
+    clntSock2 = AcceptTCPConnection(servSock2);
+
+    close(servSock2);
+
+    // close(1);         /*закрытие стандартного*/
+    dup2(clntSock2, 1);
 
     for (;;)
     {
@@ -144,7 +156,10 @@ int main(int argc, char *argv[])
         {
             float s = atof((char *)ptrs1);
             printf("all area: %f\n", s);
+            printf("#");
             fflush(stdout);
+            close(servSock);
+            close(servSock2);
             exit(0);
         }
     }
