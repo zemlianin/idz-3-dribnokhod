@@ -20,13 +20,11 @@ float fun_param_3 = 3;
 
 int main(int argc, char *argv[])
 {
-    int servSock;  /* Socket descriptor for server */
-    int clntSock;  /* Socket descriptor for client */
-    int servSock2; /* Socket descriptor for server */
-    int clntSock2;
-    unsigned short echoServPort;     /* Server port */
-    pid_t processID;                 /* Process ID from fork() */
-    unsigned int childProcCount = 0; /* Number of child processes */
+    int servSock;
+    int clntSock;
+    unsigned short echoServPort;
+    pid_t processID;
+    unsigned int childProcCount = 0;
     const char *sem_name = "sem100";
     const char *sem_s = "sem10";
     int SIZE = 256;
@@ -64,28 +62,27 @@ int main(int argc, char *argv[])
         exit(-1);
     };
 
-    if (argc != 2) /* Test for correct number of arguments */
+    if (argc != 2)
     {
         fprintf(stderr, "Usage:  %s <Server Port>\n", argv[0]);
         exit(1);
     }
 
-    echoServPort = atoi(argv[1]); /* First arg:  local port */
+    echoServPort = atoi(argv[1]);
     servSock = CreateTCPServerSocket(echoServPort);
     int cur = 0;
     int SIZE_F = sizeof(float);
 
-    for (;;) /* Run forever */
+    for (;;)
     {
         clntSock = AcceptTCPConnection(servSock);
-        /* Fork child process and report any errors */
         if ((processID = fork()) < 0)
             DieWithError("fork() failed");
-        else if (processID == 0) /* If this is the child process */
+        else if (processID == 0)
         {
-            close(servSock);             /* Child closes parent socket */
-            char echoBuffer[RCVBUFSIZE]; /* Buffer for echo string */
-            int recvMsgSize;             /* Size of received message */
+            close(servSock);
+            char echoBuffer[RCVBUFSIZE];
+            int recvMsgSize;
             char lb[SIZE_F];
             char rb[SIZE_F];
             char ansb[SIZE_F];
@@ -117,16 +114,14 @@ int main(int argc, char *argv[])
                 recvMsgSize = recv(clntSock, ansb, SIZE_F, 0);
                 float ans = atof(ansb);
                 sem_wait(sems);
-                printf("area: %f\n", ans);
+                pid_t pid = getpid();
+                printf("area: %f - Process %d\n", ans, pid);
                 float s = atof((char *)ptrs1);
                 sprintf(ptrs1, "%f", s + ans);
                 sem_post(sems);
             }
-            if (sem_unlink(sem_name) == -1)
-            {
-                perror("sem_unlink: Incorrect unlink of full semaphore");
-                exit(-1);
-            };
+            sem_unlink(sem_name);
+
             exit(0);
         }
 
@@ -135,6 +130,7 @@ int main(int argc, char *argv[])
 
         while (childProcCount)
         {
+            printf("%d\n", childProcCount);
             processID = waitpid((pid_t)-1, NULL, WNOHANG);
             if (processID < 0)
                 DieWithError("waitpid() failed");
@@ -144,13 +140,12 @@ int main(int argc, char *argv[])
                 childProcCount--;
         }
         float cur = atof((char *)ptr);
-        if (childProcCount == 0 && cur >= 10)
+        if (childProcCount <= 1 && cur >= 9)
         {
             float s = atof((char *)ptrs1);
             printf("all area: %f\n", s);
             fflush(stdout);
             exit(0);
         }
-        // exit(0);
     }
 }
